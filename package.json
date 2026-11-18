@@ -1,0 +1,18 @@
+{
+  "name": "bot-logs-reactions",
+  "version": "1.0.0",
+  "description": "Bot Discord qui trie les messages embed d'un salon de logs selon les réactions (R, G, M…) et permet de les cocher comme « déjà vus ».",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/index.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.28.1"
+  }
+}
