@@ -382,16 +382,18 @@ export function includeAuthor(guildId, name) {
 const likeEscape = (s) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /** Auteurs connus (pour l'autocomplétion). */
-export function searchAuthors(guildId, query = '', { hideExcluded = false } = {}) {
+export function searchAuthors(guildId, query = '', { hideExcluded = false, channelIds } = {}) {
+  const ch = channelWhere(channelIds);
   const sql = `
     SELECT MAX(e.author) AS author, e.author_lc AS author_lc, COUNT(*) AS n
     FROM embeds e JOIN messages m ON m.message_id = e.message_id
     WHERE m.guild_id = ? AND e.author_lc LIKE ? ESCAPE '\\'
       ${hideExcluded ? 'AND e.author_lc NOT IN (SELECT name_lc FROM excluded_authors WHERE guild_id = m.guild_id)' : ''}
+      ${ch.sql.map((c) => `AND ${c}`).join(' ')}
     GROUP BY e.author_lc
     ORDER BY n DESC, e.author_lc
     LIMIT 25`;
-  return sqlite.prepare(sql).all(guildId, `%${likeEscape(query.toLowerCase())}%`);
+  return sqlite.prepare(sql).all(guildId, `%${likeEscape(query.toLowerCase())}%`, ...ch.params);
 }
 
 /* ───────────── Messages ───────────── */
@@ -453,6 +455,13 @@ export function pruneChannel(channelId, since, until, keepIds) {
 
 /* ───────────── Listes par catégorie ───────────── */
 
+/** Restreint aux salons donnés (ceux que le membre peut voir). undefined/null = pas de restriction. */
+function channelWhere(channelIds) {
+  if (!Array.isArray(channelIds)) return { sql: [], params: [] };
+  if (!channelIds.length) return { sql: ['1 = 0'], params: [] };
+  return { sql: [`m.channel_id IN (${ph(channelIds)})`], params: [...channelIds] };
+}
+
 const COMMON_WHERE = [
   'm.created_at >= ?',
   'm.created_at <= ?',
@@ -462,8 +471,9 @@ const COMMON_WHERE = [
 const HAS_SORT_REACTION =
   'EXISTS (SELECT 1 FROM message_reactions rs WHERE rs.message_id = m.message_id AND rs.emoji_key = g.sort_emoji_key)';
 
-/** f = { guildId, code, since, until, authors: [author_lc], showSeen } */
-function buildFilter({ guildId, code, since, until, authors, showSeen }) {
+/** f = { guildId, code, since, until, authors: [author_lc], showSeen, channelIds } */
+function buildFilter({ guildId, code, since, until, authors, showSeen, channelIds }) {
+  const ch = channelWhere(channelIds);
   const where = [
     'm.guild_id = ?',
     ...COMMON_WHERE,
@@ -477,6 +487,8 @@ function buildFilter({ guildId, code, since, until, authors, showSeen }) {
     )`,
   ];
   const params = [code, guildId, since ?? 0, until ?? MAX_TS];
+  where.push(...ch.sql);
+  params.push(...ch.params);
   if (!showSeen) where.push('s.message_id IS NULL');
   if (authors?.length) {
     where.push(`e.author_lc IN (${ph(authors)})`);
@@ -532,8 +544,9 @@ export function authorsForFilter(f) {
 
 /* ───────────── File « à trier » ───────────── */
 
-function sortFilter({ guildId, since, until, includeSorted }) {
-  const where = ['m.guild_id = ?', ...COMMON_WHERE, HAS_SORT_REACTION];
+function sortFilter({ guildId, since, until, includeSorted, channelIds }) {
+  const ch = channelWhere(channelIds);
+  const where = ['m.guild_id = ?', ...COMMON_WHERE, HAS_SORT_REACTION, ...ch.sql];
   if (!includeSorted) where.push('es.message_id IS NULL');
   return {
     from: `
@@ -542,7 +555,7 @@ function sortFilter({ guildId, since, until, includeSorted }) {
       JOIN guilds g ON g.guild_id = m.guild_id
       LEFT JOIN embed_sort es ON es.message_id = e.message_id AND es.embed_idx = e.idx
       WHERE ${where.join(' AND ')}`,
-    params: [guildId, since ?? 0, until ?? MAX_TS],
+    params: [guildId, since ?? 0, until ?? MAX_TS, ...ch.params],
   };
 }
 

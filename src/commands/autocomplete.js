@@ -1,4 +1,5 @@
 import * as store from '../db.js';
+import { visibleChannelIds } from './common.js';
 
 const clip = (s) => (s.length > 100 ? `${s.slice(0, 99)}…` : s);
 
@@ -24,7 +25,7 @@ export async function handleAutocomplete(interaction) {
       .map((a) => ({ name: clip(a.name), value: clip(a.name) }));
   } else if (focused.name === 'auteur' || focused.name === 'nom') {
     choices = store
-      .searchAuthors(guildId, q, { hideExcluded: true })
+      .searchAuthors(guildId, q, { hideExcluded: true, channelIds: visibleChannelIds(interaction) })
       .map((a) => ({ name: clip(`${a.author} (${a.n} msg)`), value: clip(a.author) }));
   }
 

@@ -1,6 +1,7 @@
 import { EmbedBuilder, MessageFlags } from 'discord.js';
 import * as store from '../db.js';
 import * as actions from '../actions.js';
+import { memberCanRead } from './common.js';
 import { discordTs, parseDateInput } from '../dates.js';
 import { UserError } from '../errors.js';
 
@@ -71,6 +72,9 @@ async function addChannel(interaction) {
   const option = interaction.options.getChannel('salon', true);
   const since = parseDateInput(interaction.options.getString('depuis') ?? '30j');
   const channel = await actions.resolveTextChannel(interaction.guild, option.id);
+  if (!memberCanRead(interaction, channel)) {
+    throw new UserError(`Tu dois pouvoir lire ${channel} toi-même pour le faire surveiller.`);
+  }
 
   await interaction.deferReply(EPH);
   const result = await actions.watchChannel(interaction.guild, channel, since);

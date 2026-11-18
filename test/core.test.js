@@ -345,3 +345,25 @@ test("migration d'une base de la version précédente", () => {
   assert.ok(r.messageCols.includes('embed_count') && !r.messageCols.includes('author'));
   assert.equal(r.messages, 0, 'le cache des messages est vidé (relu au prochain scan)');
 });
+
+test('on ne voit que les salons que l’on peut lire', () => {
+  const guild = 'g4';
+  store.ensureGuild(guild);
+  store.addChannel(guild, 'pub');
+  store.addChannel(guild, 'priv');
+  const pub = fakeMsg({ guild, channel: 'pub', ts: BASE, embeds: [{ author: 'alice' }], reactions: [R] });
+  const priv = fakeMsg({ guild, channel: 'priv', ts: BASE + 1, embeds: [{ author: 'secret' }], reactions: [R, SORT] });
+  store.saveMessages([extractMessage(pub), extractMessage(priv)]);
+  const f = { guildId: guild, code: 'R', showSeen: true };
+
+  // Sans restriction (API) : tout ; restreint à « pub » : seulement pub ; aucun salon visible : rien
+  assert.deepEqual(store.queryIds(f), keysOf(pub));
+  assert.equal(store.querySortIds({ guildId: guild }).length, 1);
+  assert.deepEqual(store.queryIds({ ...f, channelIds: ['pub'] }), keysOf(pub));
+  assert.deepEqual(store.querySortIds({ guildId: guild, channelIds: ['pub'] }), []);
+  assert.deepEqual(store.countToSort({ guildId: guild, channelIds: ['pub'] }), { embeds: 0, messages: 0 });
+  assert.deepEqual(store.queryIds({ ...f, channelIds: [] }), []);
+  assert.deepEqual(store.countMessages({ ...f, channelIds: [] }), { total: 0, unseen: 0 });
+  assert.deepEqual(store.searchAuthors(guild, '', { channelIds: ['pub'] }).map((a) => a.author_lc), ['alice']);
+  assert.equal(store.searchAuthors(guild, '').length, 2);
+});

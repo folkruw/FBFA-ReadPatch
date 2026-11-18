@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
-import { EmbedBuilder, MessageFlags } from 'discord.js';
+import { EmbedBuilder, MessageFlags, PermissionFlagsBits } from 'discord.js';
+import * as store from '../db.js';
 
 export const EPH = { flags: MessageFlags.Ephemeral };
 export const NO_CHANNEL_MSG = "Aucun salon n'est surveillé. Il faut d'abord faire `/config salon ajouter`.";
@@ -38,6 +39,21 @@ export async function getSession(interaction, kind, sid) {
   }
   s.touched = Date.now();
   return s;
+}
+
+const READ_PERMS = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory];
+
+/** Le membre peut-il lire ce salon (voir le salon + son historique) ? */
+export function memberCanRead(interaction, channel) {
+  return !!channel?.permissionsFor(interaction.member ?? interaction.user)?.has(READ_PERMS);
+}
+
+/** Salons surveillés que le membre peut lire : on ne lui montre jamais le contenu des autres. */
+export function visibleChannelIds(interaction) {
+  return store
+    .getChannels(interaction.guildId)
+    .filter((ch) => memberCanRead(interaction, interaction.guild?.channels.cache.get(ch.channel_id)))
+    .map((ch) => ch.channel_id);
 }
 
 export const userName = (interaction) =>

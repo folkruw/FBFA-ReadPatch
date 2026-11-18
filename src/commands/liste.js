@@ -18,6 +18,7 @@ import {
   saveSession,
   truncate,
   userName,
+  visibleChannelIds,
 } from './common.js';
 
 export const PAGE_SIZE = 5;
@@ -72,6 +73,7 @@ export async function handleListe(interaction) {
     authors: author ? [author.toLowerCase()] : [],
     showSeen: interaction.options.getBoolean('vus') ?? false,
     order: interaction.options.getString('ordre') ?? 'asc',
+    channelIds: visibleChannelIds(interaction),
   });
   await interaction.editReply(buildView(s));
 }

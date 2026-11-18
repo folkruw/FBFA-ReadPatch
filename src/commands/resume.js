@@ -3,7 +3,7 @@ import * as store from '../db.js';
 import { discordTs, parseDateInput } from '../dates.js';
 import { UserError } from '../errors.js';
 import { backfillGuild, syncGuild } from '../scanner.js';
-import { NO_CHANNEL_MSG } from './common.js';
+import { NO_CHANNEL_MSG, visibleChannelIds } from './common.js';
 
 export async function handleResume(interaction) {
   const guildId = interaction.guildId;
@@ -14,13 +14,14 @@ export async function handleResume(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   if (since != null) await backfillGuild(interaction.client, guildId, since);
 
+  const channelIds = visibleChannelIds(interaction);
   const lines = store.getCategories(guildId).map((c) => {
-    const { total, unseen } = store.countMessages({ guildId, code: c.code, since });
+    const { total, unseen } = store.countMessages({ guildId, code: c.code, since, channelIds });
     const status = unseen ? `**${unseen}** à traiter` : '✅ rien à traiter';
     return `${c.emoji_display} **${c.label}** (\`${c.code}\`) — ${status} · ${total} au total`;
   });
 
-  const toSort = store.countToSort({ guildId, since });
+  const toSort = store.countToSort({ guildId, since, channelIds });
   if (toSort.embeds) {
     lines.push(
       '',

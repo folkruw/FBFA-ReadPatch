@@ -18,6 +18,7 @@ import {
   saveSession,
   truncate,
   userName,
+  visibleChannelIds,
 } from './common.js';
 
 export const SORT_PAGE_SIZE = 4; // 4 menus (un par embed) + 1 ligne de navigation = 5 lignes max
@@ -54,6 +55,7 @@ export async function handleTrier(interaction) {
     userId: interaction.user.id,
     since,
     includeSorted: interaction.options.getBoolean('tous') ?? false,
+    channelIds: visibleChannelIds(interaction),
   });
   await interaction.editReply(buildSortView(s));
 }
