@@ -367,3 +367,23 @@ test('on ne voit que les salons que l’on peut lire', () => {
   assert.deepEqual(store.searchAuthors(guild, '', { channelIds: ['pub'] }).map((a) => a.author_lc), ['alice']);
   assert.equal(store.searchAuthors(guild, '').length, 2);
 });
+
+test('droits retirés pendant une session : la liste est rechargée', async () => {
+  const { refreshVisibility } = await import('../src/commands/common.js');
+  const guild = 'g4'; // salons « pub » et « priv » du test précédent
+  const s = createSession({ guildId: guild, code: 'R', userId: 'u1', showSeen: true, channelIds: ['pub', 'priv'] });
+  // Faux membre qui ne peut plus lire que « pub »
+  const interaction = {
+    guildId: guild,
+    member: { id: 'u1' },
+    user: { id: 'u1' },
+    guild: {
+      channels: {
+        cache: new Map(['pub', 'priv'].map((id) => [id, { permissionsFor: () => ({ has: () => id === 'pub' }) }])),
+      },
+    },
+  };
+  assert.equal(refreshVisibility(interaction, s), true);
+  assert.deepEqual(s.channelIds, ['pub']);
+  assert.equal(refreshVisibility(interaction, s), false, 'pas de rechargement si rien ne change');
+});

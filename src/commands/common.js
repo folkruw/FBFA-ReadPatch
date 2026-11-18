@@ -56,6 +56,18 @@ export function visibleChannelIds(interaction) {
     .map((ch) => ch.channel_id);
 }
 
+/**
+ * Recalcule les salons visibles à chaque clic : si les droits du membre ont changé depuis l'ouverture
+ * de la vue, la session est mise à jour (et la liste rechargée par l'appelant).
+ * Retourne true si la liste doit être rechargée.
+ */
+export function refreshVisibility(interaction, s) {
+  const visible = visibleChannelIds(interaction);
+  if (visible.join(',') === (s.channelIds ?? []).join(',')) return false;
+  s.channelIds = visible;
+  return true;
+}
+
 export const userName = (interaction) =>
   interaction.member?.displayName ?? interaction.user.displayName ?? interaction.user.username;
 

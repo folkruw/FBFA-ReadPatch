@@ -16,6 +16,7 @@ import {
   embedPosition,
   getSession,
   saveSession,
+  refreshVisibility,
   truncate,
   userName,
   visibleChannelIds,
@@ -84,6 +85,7 @@ export async function handleListeComponent(interaction) {
   const [, sid, action, arg] = interaction.customId.split(':');
   const s = await getSession(interaction, 'liste', sid);
   if (!s) return;
+  if (refreshVisibility(interaction, s)) reload(s); // droits modifiés : on retire ce qui n'est plus visible
   const name = userName(interaction);
   const pageIds = () => s.ids.slice(s.page * PAGE_SIZE, (s.page + 1) * PAGE_SIZE);
 

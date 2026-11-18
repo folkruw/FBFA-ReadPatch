@@ -16,6 +16,7 @@ import {
   embedPosition,
   getSession,
   saveSession,
+  refreshVisibility,
   truncate,
   userName,
   visibleChannelIds,
@@ -66,6 +67,7 @@ export async function handleTrierComponent(interaction) {
   const [, sid, action, arg] = interaction.customId.split(':');
   const s = await getSession(interaction, 'trier', sid);
   if (!s) return;
+  if (refreshVisibility(interaction, s)) reload(s); // droits modifiés : on retire ce qui n'est plus visible
 
   switch (action) {
     case 's': {
